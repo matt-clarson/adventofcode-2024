@@ -1,0 +1,38 @@
+[tasks.format]
+install_crate = "rustfmt"
+command = "cargo"
+args = ["fmt", "--", "--emit=files"]
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.check]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--all-targets", "--", "-D", "warnings"]
+dependencies = ["clean"]
+
+[tasks.test]
+command = "cargo"
+args = ["test"]
+dependencies = ["clean"]
+
+[tasks.build]
+command = "cargo"
+args = ["build", "--release"]
+dependencies = ["clean"]
+
+[tasks.mv]
+command = "mv"
+args = ["./target/release/adventofcode-2024", "${HOME}/.cargo/bin/"]
+dependencies = ["build"]
+
+[tasks.install]
+dependencies = [
+	"format",
+	"check",
+	"test",
+	"build",
+	"mv",
+]
