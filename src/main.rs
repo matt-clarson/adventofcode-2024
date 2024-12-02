@@ -1,4 +1,5 @@
 mod day_01;
+mod day_02;
 mod parser;
 mod problem;
 #[cfg(test)]
@@ -21,7 +22,8 @@ struct Cli {
 }
 
 gen::problems! {
-    Day01: day_01::solution()
+    Day01: day_01::solution(),
+    Day02: day_02::solution()
 }
 
 fn main() {
@@ -51,7 +53,7 @@ mod gen {
                 $name {
                     /// Which part of the puzzle to solve.
                     part: Part,
-                }
+                },
             )+
         }
 
