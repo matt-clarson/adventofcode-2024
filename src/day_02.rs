@@ -22,38 +22,23 @@ impl<R: Read> Iterator for Integers<R> {
     type Item = anyhow::Result<Vec<i32>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Err(err) = self.parser.skip_if_eq(' ') {
-            return Some(Err(err));
-        }
+        let mut integers = self.parser.integer().map(|n| vec![n])?;
 
-        let mut integers = match self.parser.integer() {
-            Some(Ok(n)) => vec![n],
-            Some(Err(err)) => return Some(Err(err)),
-            None => return None,
-        };
-
-        loop {
-            match self.parser.peek() {
-                Some(Ok('\n')) => return self.parser.next().and(Some(Ok(integers))),
-                None => return Some(Ok(integers)),
-                Some(Err(err)) => return Some(Err(err)),
-                _ => {}
-            };
-
-            if let Err(err) = self.parser.skip_if_eq(' ') {
-                return Some(Err(err));
+        while self
+            .parser
+            .take_newline()
+            .or_else(|| self.parser.eof())
+            .is_none()
+        {
+            if let Some(n) = self.parser.integer() {
+                integers.push(n);
+            } else {
+                return Some(Err(anyhow!(
+                    "line can only contain integers and whitespace"
+                )));
             }
-
-            match self.parser.integer() {
-                Some(Ok(n)) => integers.push(n),
-                Some(Err(err)) => return Some(Err(err)),
-                None => {
-                    return Some(Err(anyhow!(
-                        "line can only contain integers and whitespace"
-                    )))
-                }
-            };
         }
+        Some(Ok(integers))
     }
 }
 

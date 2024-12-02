@@ -27,35 +27,21 @@ impl<R: Read> Iterator for Pairs<R> {
     type Item = anyhow::Result<(i32, i32)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Err(err) = self.parser.skip_if_eq(' ') {
-            return Some(Err(err));
-        }
+        let left = self.parser.integer()?;
 
-        let left = match self.parser.integer() {
-            Some(Ok(i)) => i,
-            Some(Err(err)) => return Some(Err(err)),
-            None => return None,
+        let right = if let Some(n) = self.parser.integer() {
+            n
+        } else {
+            return Some(Err(anyhow!("expect two integers per-line")));
         };
 
-        if let Err(err) = self.parser.skip_if_eq(' ') {
-            return Some(Err(err));
-        }
-
-        let right = match self.parser.integer() {
-            Some(Ok(i)) => i,
-            Some(Err(err)) => return Some(Err(err)),
-            None => return Some(Err(anyhow!("expect two integers per-line"))),
-        };
-
-        if let Err(err) = self.parser.skip_if_eq(' ') {
-            return Some(Err(err));
-        }
-
-        match self.parser.next() {
-            Some(Ok('\n')) | None => Some(Ok((left, right))),
-            Some(Ok(_)) => Some(Err(anyhow!("expected line to end after second integer"))),
-            Some(Err(err)) => Some(Err(err)),
-        }
+        self.parser
+            .take_newline()
+            .or_else(|| self.parser.eof())
+            .and(Some(Ok((left, right))))
+            .or(Some(Err(anyhow!(
+                "expected line to end after second integer"
+            ))))
     }
 }
 
