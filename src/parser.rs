@@ -3,7 +3,7 @@ use std::{
     io::{Bytes, Read},
 };
 
-/// A concrete [Parser] instance for working with types implementing [std::io::Read].
+/// A [Parser] instance for working with types implementing [std::io::Read].
 pub type BytesParser<R> = Parser<BytesReader<R>>;
 
 /// A parser over a stream of bytes, where reading each byte can produce an error (e.g. a byte
@@ -71,8 +71,18 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     ///
     /// Consumes all whitespace characters (besides newlines `\n`).
     /// If the next character in the stream is neither a digit or '-', returns None.
-    pub fn integer(&mut self) -> Option<i32> {
+    pub fn next_integer(&mut self) -> Option<i32> {
         self.skip_if_eq(' ');
+        self.integer()
+    }
+
+    /// Eagerly consumes digit characters from the source stream and parses them into a single
+    /// integer value. Integer can also be started with '-' for negatives.
+    /// If the next character in the stream is neither a digit or '-', returns None.
+    ///
+    /// Note that the method [Parser::next_integer] exists as a wrapper for this method that also
+    /// consumes leading whitespace before the next integer.
+    pub fn integer(&mut self) -> Option<i32> {
         let mut s = self
             .next_if(|c| c.is_ascii_digit() || c == '-')
             .map(|c| format!("{c}"))?;
@@ -89,6 +99,13 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     /// match without consuming that character from the stream.
     pub fn skip_if_eq(&mut self, c: char) {
         while self.next_if_eq(c).is_some() {}
+    }
+
+    #[allow(unused)]
+    /// Eagerly consume all characters matching function `f`, stop at the first character that does
+    /// not match without consuming that character from the stream.
+    pub fn skip_if<F: Fn(char) -> bool>(&mut self, f: F) {
+        while self.next_if(&f).is_some() {}
     }
 
     #[allow(unused)]
@@ -146,9 +163,6 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     /// that matches the next characters in the source stream.
     /// If a match is found, consumes the matching `str`s bytes from tehs tream. Otherwise the
     /// stream is not advanced (except where some portion of the stream is cached internally).
-    ///
-    /// If there is a need to map the matched strings to values, consider using
-    /// [Parser::take_matching_and].
     pub fn take_matching_and<T, V: IntoIterator<Item = (&'static str, T)>>(
         &mut self,
         v: V,
@@ -164,19 +178,6 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
             self.skip(n);
             Some(t)
         })
-    }
-
-    #[allow(unused)]
-    /// Check the next n characters in the stream and, if they match the string `s` consume them
-    /// and return `Some(())`.
-    /// Otherwise returns `None` without consuming from the stream.
-    pub fn take_str(&mut self, s: &str) -> Option<()> {
-        if self.peek_n(s.len()) == s {
-            self.skip(s.len());
-            Some(())
-        } else {
-            None
-        }
     }
 
     #[allow(unused)]
@@ -291,55 +292,64 @@ mod test {
     }
 
     #[test]
+    fn parser_skip_if() {
+        let mut parser = parser_for!("abc");
+
+        assert_eq!(parser.next(), Some('a'));
+        parser.skip_if(|c| c == 'a' || c == 'b');
+        assert_eq!(parser.next(), Some('c'));
+    }
+
+    #[test]
     fn parser_parses_single_digit_integer() {
         let mut parser = parser_for!("1");
 
-        assert_eq!(parser.integer(), Some(1));
+        assert_eq!(parser.next_integer(), Some(1));
     }
 
     #[test]
     fn parser_parses_multi_digit_integer() {
         let mut parser = parser_for!("123");
 
-        assert_eq!(parser.integer(), Some(123));
+        assert_eq!(parser.next_integer(), Some(123));
     }
 
     #[test]
     fn parser_parses_integer_with_leading_zeros() {
         let mut parser = parser_for!("0001");
 
-        assert_eq!(parser.integer(), Some(1));
+        assert_eq!(parser.next_integer(), Some(1));
     }
 
     #[test]
     fn parser_parses_integer_with_trailing_zeros() {
         let mut parser = parser_for!("1000");
 
-        assert_eq!(parser.integer(), Some(1000));
+        assert_eq!(parser.next_integer(), Some(1000));
     }
 
     #[test]
     fn parser_parses_integer_with_zeros() {
         let mut parser = parser_for!("10002");
 
-        assert_eq!(parser.integer(), Some(10002));
+        assert_eq!(parser.next_integer(), Some(10002));
     }
 
     #[test]
     fn parser_parses_negative_integer() {
         let mut parser = parser_for!("-1");
 
-        assert_eq!(parser.integer(), Some(-1));
+        assert_eq!(parser.next_integer(), Some(-1));
     }
 
     #[test]
     fn parser_skips_white_space_before_parsing_integer() {
         let mut parser = parser_for!("     1  39     -8");
 
-        assert_eq!(parser.integer(), Some(1));
-        assert_eq!(parser.integer(), Some(39));
-        assert_eq!(parser.integer(), Some(-8));
-        assert_eq!(parser.integer(), None);
+        assert_eq!(parser.next_integer(), Some(1));
+        assert_eq!(parser.next_integer(), Some(39));
+        assert_eq!(parser.next_integer(), Some(-8));
+        assert_eq!(parser.next_integer(), None);
     }
 
     #[test]
@@ -393,26 +403,12 @@ mod test {
     }
 
     #[test]
-    fn parser_take_str() {
-        let mut parser = parser_for!("abc123hello");
-
-        assert_eq!(parser.take_str("abc"), Some(()));
-        assert_eq!(parser.peek_n(4), "123h");
-        assert_eq!(parser.take_str("123456"), None);
-        assert_eq!(parser.peek(), Some('1'));
-        assert_eq!(parser.take_str("123"), Some(()));
-        assert_eq!(parser.peek(), Some('h'));
-        parser.skip(5);
-        assert_eq!(parser.take_str("hello"), None);
-    }
-
-    #[test]
     fn parser_take_matching() {
         let mut parser = parser_for!("onetowthreefonefive");
 
         macro_rules! numbers {
             () => {
-                vec![
+                [
                     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
                 ]
             };
@@ -437,7 +433,7 @@ mod test {
 
         macro_rules! numbers {
             () => {
-                vec![
+                [
                     ("zero", 0),
                     ("one", 1),
                     ("two", 2),

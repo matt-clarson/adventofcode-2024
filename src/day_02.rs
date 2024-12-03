@@ -22,7 +22,7 @@ impl<R: Read> Iterator for Integers<R> {
     type Item = anyhow::Result<Vec<i32>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut integers = self.parser.integer().map(|n| vec![n])?;
+        let mut integers = self.parser.next_integer().map(|n| vec![n])?;
 
         while self
             .parser
@@ -30,7 +30,7 @@ impl<R: Read> Iterator for Integers<R> {
             .or_else(|| self.parser.eof())
             .is_none()
         {
-            if let Some(n) = self.parser.integer() {
+            if let Some(n) = self.parser.next_integer() {
                 integers.push(n);
             } else {
                 return Some(Err(anyhow!(

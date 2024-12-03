@@ -27,9 +27,9 @@ impl<R: Read> Iterator for Pairs<R> {
     type Item = anyhow::Result<(i32, i32)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let left = self.parser.integer()?;
+        let left = self.parser.next_integer()?;
 
-        let right = if let Some(n) = self.parser.integer() {
+        let right = if let Some(n) = self.parser.next_integer() {
             n
         } else {
             return Some(Err(anyhow!("expect two integers per-line")));
