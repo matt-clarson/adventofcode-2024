@@ -2,8 +2,8 @@ use anyhow::anyhow;
 use std::io::{BufRead, Read};
 
 use crate::{
+    day::Day,
     parser::{BytesParser, Parser},
-    problem::Problem,
 };
 
 struct Integers<R: Read> {
@@ -129,8 +129,8 @@ fn part_2<I: BufRead>(input: I) -> anyhow::Result<String> {
     Ok(n.to_string())
 }
 
-pub fn solution<I: BufRead>() -> Problem<I> {
-    Problem::part_1(part_1).part_2(part_2)
+pub fn solution<I: BufRead>() -> Day<I> {
+    Day::part_1(part_1).part_2(part_2)
 }
 
 #[cfg(test)]

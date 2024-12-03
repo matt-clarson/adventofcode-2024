@@ -2,12 +2,12 @@ use std::io::{stdin, BufRead, StdinLock};
 
 pub type PartFn<I> = fn(input: I) -> anyhow::Result<String>;
 
-pub struct Problem<I: BufRead> {
+pub struct Day<I: BufRead> {
     part_1_fn: PartFn<I>,
     part_2_fn: Option<PartFn<I>>,
 }
 
-impl<I: BufRead> Problem<I> {
+impl<I: BufRead> Day<I> {
     pub fn part_1(part_1_fn: PartFn<I>) -> Self {
         Self {
             part_1_fn,
@@ -21,7 +21,7 @@ impl<I: BufRead> Problem<I> {
     }
 }
 
-impl Problem<StdinLock<'_>> {
+impl Day<StdinLock<'_>> {
     pub fn solve_part_1(&self) -> anyhow::Result<()> {
         Self::solve(self.part_1_fn)
     }

@@ -1,8 +1,8 @@
+mod day;
 mod day_01;
 mod day_02;
 mod day_03;
 mod parser;
-mod problem;
 #[cfg(test)]
 mod test_util;
 
@@ -19,10 +19,10 @@ struct Cli {
     debug: bool,
 
     #[command(subcommand)]
-    problem: Problem,
+    day: Day,
 }
 
-gen::problems! {
+gen::days! {
     Day01: day_01::solution(),
     Day02: day_02::solution(),
     Day03: day_03::solution()
@@ -31,7 +31,7 @@ gen::problems! {
 fn main() {
     let cli = Cli::parse();
 
-    if let Err(err) = cli.problem.solve() {
+    if let Err(err) = cli.day.solve() {
         eprintln!("Error: {err}");
         std::process::exit(1);
     }
@@ -39,8 +39,8 @@ fn main() {
 
 mod gen {
     #[macro_export]
-    macro_rules! problems{
-    ($($name:ident: $problem:expr),+) => {
+    macro_rules! days{
+    ($($name:ident: $day:expr),+) => {
         #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
         enum Part {
             /// Solve part one of the puzzle.
@@ -49,9 +49,8 @@ mod gen {
             Two,
         }
         #[derive(Subcommand)]
-        enum Problem {
+        enum Day {
             $(
-                /// Reads puzzle input from STDIN.
                 $name {
                     /// Which part of the puzzle to solve.
                     part: Part,
@@ -59,12 +58,12 @@ mod gen {
             )+
         }
 
-        impl Problem {
+        impl Day {
             fn solve(&self) -> anyhow::Result<()> {
                 match self {
                     $(
-                        Self::$name { part: Part::One } => $problem.solve_part_1(),
-                        Self::$name { part: Part::Two } => $problem.solve_part_2(),
+                        Self::$name { part: Part::One } => $day.solve_part_1(),
+                        Self::$name { part: Part::Two } => $day.solve_part_2(),
                     )+
                 }
             }
@@ -72,5 +71,5 @@ mod gen {
     }
 }
 
-    pub use problems;
+    pub use days;
 }
