@@ -12,7 +12,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[command(
     version,
     about,
-    long_about = "CLI for soliving the Advent of Code 2024 puzzles."
+    long_about = "CLI for solving the Advent of Code 2024 puzzles."
 )]
 struct Cli {
     #[arg(short, long)]
