@@ -1,4 +1,7 @@
-use std::io::{Bytes, Read};
+use std::{
+    collections::VecDeque,
+    io::{Bytes, Read},
+};
 
 /// A concrete [Parser] instance for working with types implementing [std::io::Read].
 pub type BytesParser<R> = Parser<BytesReader<R>>;
@@ -10,7 +13,8 @@ pub type BytesParser<R> = Parser<BytesReader<R>>;
 /// common lexemes.
 pub struct Parser<S: Iterator<Item = anyhow::Result<u8>>> {
     source: S,
-    peeked: Option<char>,
+    peeked: VecDeque<char>,
+    peeked_container: String,
 }
 
 /// Utility that maps errors produced by [Bytes](std::io::Bytes) to [anyhow::Error].
@@ -38,7 +42,8 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     pub fn new(source: S) -> Self {
         Self {
             source,
-            peeked: None,
+            peeked: VecDeque::new(),
+            peeked_container: String::with_capacity(8),
         }
     }
 
@@ -86,13 +91,21 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
         while self.next_if_eq(c).is_some() {}
     }
 
+    #[allow(unused)]
+    /// Skip the next `n` characters.
+    pub fn skip(&mut self, n: usize) {
+        for _ in 0..n {
+            self.next();
+        }
+    }
+
     /// Consume and return the next character in the stream if the provided function `f` returns
     /// `true` when passed that character, otherwise returns `None` and does not consume any
     /// characters from the stream.
     pub fn next_if<F: Fn(char) -> bool>(&mut self, f: F) -> Option<char> {
         self.peek()
             .filter(|peeked| f(*peeked))
-            .and_then(|_| self.peeked.take())
+            .and_then(|_| self.peeked.pop_back())
     }
 
     /// Consume and return the next character in the stream if that character equals `c`, otherwise
@@ -100,7 +113,91 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     pub fn next_if_eq(&mut self, c: char) -> Option<char> {
         self.peek()
             .filter(|peeked| *peeked == c)
-            .and_then(|_| self.peeked.take())
+            .and_then(|_| self.peeked.pop_back())
+    }
+
+    #[allow(unused)]
+    /// Iterates over a list of `&'static str`s and returns the first that matches the next
+    /// characters in the source stream.
+    /// If a match is found, consumes the matching `str`s bytes from tehs tream. Otherwise the
+    /// stream is not advanced (except where some portion of the stream is cached internally).
+    ///
+    /// If there is a need to map the matched strings to values, consider using
+    /// [Parser::take_matching_and].
+    pub fn take_matching<V: IntoIterator<Item = &'static str>>(
+        &mut self,
+        v: V,
+    ) -> Option<&'static str> {
+        v.into_iter().find_map(|s| {
+            let n = s.as_bytes().iter().try_fold(0usize, |i, b| {
+                if self.peek_n(i + 1).as_bytes().get(i) == Some(b) {
+                    Some(i + 1)
+                } else {
+                    None
+                }
+            })?;
+            self.skip(n);
+            Some(s)
+        })
+    }
+
+    #[allow(unused)]
+    /// Iterates over a list of `&'static str` and T pairs, and returns the T for the first string
+    /// that matches the next characters in the source stream.
+    /// If a match is found, consumes the matching `str`s bytes from tehs tream. Otherwise the
+    /// stream is not advanced (except where some portion of the stream is cached internally).
+    ///
+    /// If there is a need to map the matched strings to values, consider using
+    /// [Parser::take_matching_and].
+    pub fn take_matching_and<T, V: IntoIterator<Item = (&'static str, T)>>(
+        &mut self,
+        v: V,
+    ) -> Option<T> {
+        v.into_iter().find_map(|(s, t)| {
+            let n = s.as_bytes().iter().try_fold(0usize, |i, b| {
+                if self.peek_n(i + 1).as_bytes().get(i) == Some(b) {
+                    Some(i + 1)
+                } else {
+                    None
+                }
+            })?;
+            self.skip(n);
+            Some(t)
+        })
+    }
+
+    #[allow(unused)]
+    /// Check the next n characters in the stream and, if they match the string `s` consume them
+    /// and return `Some(())`.
+    /// Otherwise returns `None` without consuming from the stream.
+    pub fn take_str(&mut self, s: &str) -> Option<()> {
+        if self.peek_n(s.len()) == s {
+            self.skip(s.len());
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    #[allow(unused)]
+    /// Load the next `n` characters from the stream into a buffer and return them. The buffer is
+    /// cached and consumed prior to reading anymore values from the stream.
+    pub fn peek_n(&mut self, n: usize) -> &str {
+        if n > self.peeked.len() {
+            for _ in 0..(n - self.peeked.len()) {
+                if let Some(c) = self.take_next() {
+                    self.peeked.push_front(c);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        self.peeked_container.clear();
+        self.peeked_container
+            .extend(self.peeked.iter().rev().take(n));
+
+        &self.peeked_container
     }
 
     /// Returns the next character in the stream without consuming that value. Repeated calls will
@@ -109,9 +206,9 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     /// Note that this function _will_ advance the underlying stream by one when loading a
     /// previously un-peeked character.
     pub fn peek(&mut self) -> Option<char> {
-        self.peeked.or_else(|| {
+        self.peeked.back().copied().or_else(|| {
             let next = self.take_next()?;
-            self.peeked.replace(next);
+            self.peeked.push_front(next);
             Some(next)
         })
     }
@@ -120,7 +217,7 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     /// stream ends.
     #[allow(unused)]
     pub fn next(&mut self) -> Option<char> {
-        self.peeked.take().or_else(|| self.take_next())
+        self.peeked.pop_back().or_else(|| self.take_next())
     }
 
     fn take_next(&mut self) -> Option<char> {
@@ -279,5 +376,92 @@ mod test {
         let mut parser = parser_for!("     ");
 
         assert_eq!(parser.eof(), Some(()));
+    }
+
+    #[test]
+    fn parser_peek_n() {
+        let mut parser = parser_for!("hello world");
+
+        assert_eq!(parser.peek_n(3), "hel");
+        assert_eq!(parser.peek_n(4), "hell");
+        assert_eq!(parser.peek_n(2), "he");
+
+        parser.skip(8);
+
+        assert_eq!(parser.peek_n(3), "rld");
+        assert_eq!(parser.peek_n(5), "rld");
+    }
+
+    #[test]
+    fn parser_take_str() {
+        let mut parser = parser_for!("abc123hello");
+
+        assert_eq!(parser.take_str("abc"), Some(()));
+        assert_eq!(parser.peek_n(4), "123h");
+        assert_eq!(parser.take_str("123456"), None);
+        assert_eq!(parser.peek(), Some('1'));
+        assert_eq!(parser.take_str("123"), Some(()));
+        assert_eq!(parser.peek(), Some('h'));
+        parser.skip(5);
+        assert_eq!(parser.take_str("hello"), None);
+    }
+
+    #[test]
+    fn parser_take_matching() {
+        let mut parser = parser_for!("onetowthreefonefive");
+
+        macro_rules! numbers {
+            () => {
+                vec![
+                    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+                ]
+            };
+        }
+
+        assert_eq!(parser.take_matching(numbers!()), Some("one"));
+        assert_eq!(parser.take_matching(numbers!()), None);
+        assert_eq!(parser.next(), Some('t'));
+        assert_eq!(parser.next(), Some('o'));
+        assert_eq!(parser.next(), Some('w'));
+        assert_eq!(parser.take_matching(numbers!()), Some("three"));
+        assert_eq!(parser.take_matching(numbers!()), None);
+        assert_eq!(parser.next(), Some('f'));
+        assert_eq!(parser.take_matching(numbers!()), Some("one"));
+        assert_eq!(parser.take_matching(numbers!()), Some("five"));
+        assert_eq!(parser.take_matching(numbers!()), None);
+    }
+
+    #[test]
+    fn parser_take_matching_and() {
+        let mut parser = parser_for!("onetowthreefonefive");
+
+        macro_rules! numbers {
+            () => {
+                vec![
+                    ("zero", 0),
+                    ("one", 1),
+                    ("two", 2),
+                    ("three", 3),
+                    ("four", 4),
+                    ("five", 5),
+                    ("six", 6),
+                    ("seven", 7),
+                    ("eight", 8),
+                    ("nine", 9),
+                ]
+            };
+        }
+
+        assert_eq!(parser.take_matching_and(numbers!()), Some(1));
+        assert_eq!(parser.take_matching_and(numbers!()), None);
+        assert_eq!(parser.next(), Some('t'));
+        assert_eq!(parser.next(), Some('o'));
+        assert_eq!(parser.next(), Some('w'));
+        assert_eq!(parser.take_matching_and(numbers!()), Some(3));
+        assert_eq!(parser.take_matching_and(numbers!()), None);
+        assert_eq!(parser.next(), Some('f'));
+        assert_eq!(parser.take_matching_and(numbers!()), Some(1));
+        assert_eq!(parser.take_matching_and(numbers!()), Some(5));
+        assert_eq!(parser.take_matching_and(numbers!()), None);
     }
 }
