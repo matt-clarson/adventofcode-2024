@@ -2,6 +2,7 @@ mod day;
 mod day_01;
 mod day_02;
 mod day_03;
+mod day_04;
 mod parser;
 #[cfg(test)]
 mod test_util;
@@ -25,7 +26,8 @@ struct Cli {
 gen::days! {
     Day01: day_01::solution(),
     Day02: day_02::solution(),
-    Day03: day_03::solution()
+    Day03: day_03::solution(),
+    Day04: day_04::solution()
 }
 
 fn main() {
