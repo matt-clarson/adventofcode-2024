@@ -1,29 +1,6 @@
-use std::{
-    fmt::Debug,
-    io::{BufRead, Read},
-};
+use std::io::{BufRead, Read};
 
-use crate::day::Day;
-
-#[derive(Copy, Clone, Debug)]
-struct Vec2<I: Copy + Clone + Debug>(I, I);
-
-impl Vec2<usize> {
-    fn try_add(&self, d: Vec2<isize>, max: Vec2<usize>) -> Option<Vec2<usize>> {
-        if self.0 == 0 && d.0 == -1
-            || self.0 == max.0 && d.0 == 1
-            || self.1 == 0 && d.1 == -1
-            || self.1 == max.1 && d.1 == 1
-        {
-            None
-        } else {
-            Some(Vec2(
-                (self.0 as isize + d.0) as usize,
-                (self.1 as isize + d.1) as usize,
-            ))
-        }
-    }
-}
+use crate::{day::Day, grid::Vec2};
 
 struct Crossword {
     grid: Vec<Vec<char>>,
