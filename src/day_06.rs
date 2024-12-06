@@ -1,16 +1,14 @@
-use std::{
-    collections::HashSet,
-    io::{BufRead, Read},
-};
+use std::io::{BufRead, Read};
 
 use anyhow::anyhow;
+use gxhash::HashSetExt;
 
 use crate::{day::Day, grid::Vec2};
 
 struct Steps {
     width: usize,
     height: usize,
-    positions: Vec<Vec2<usize>>,
+    positions: gxhash::HashSet<Vec2<usize>>,
     obstacle: Option<Vec2<usize>>,
     initial: Vec2<usize>,
     current: Option<Vec2<usize>>,
@@ -21,7 +19,7 @@ impl Steps {
     fn try_from<R: Read>(source: R) -> anyhow::Result<Self> {
         let mut width = 0;
         let mut height = 0;
-        let mut positions = vec![];
+        let mut positions = gxhash::HashSet::new();
         let mut start = None;
 
         for (i, b) in source.bytes().enumerate() {
@@ -30,7 +28,9 @@ impl Steps {
                     width = if width == 0 { i } else { width };
                     height += 1;
                 }
-                '#' => positions.push(Vec2(i - (height * width) - height, height)),
+                '#' => {
+                    positions.insert(Vec2(i - (height * width) - height, height));
+                }
                 '^' => start = Some(Vec2(i - (height * width) - height, height)),
                 _ => {}
             }
@@ -61,7 +61,10 @@ impl Steps {
     fn reset_with_obstacle(&mut self, obstacle: Vec2<usize>) {
         self.current = None;
         self.direction = Vec2(0, -1);
-        self.obstacle = Some(obstacle);
+        self.positions.insert(obstacle);
+        if let Some(prev) = self.obstacle.replace(obstacle) {
+            self.positions.remove(&prev);
+        }
     }
 }
 
@@ -75,7 +78,7 @@ impl Iterator for Steps {
         }
 
         let next = self.next_step()?;
-        if self.obstacle.is_some_and(|p| next == p) || self.positions.iter().any(|p| next == *p) {
+        if self.positions.contains(&next) {
             self.direction = self.direction.rotate_clockwise();
         } else {
             self.current = Some(next);
@@ -83,30 +86,40 @@ impl Iterator for Steps {
 
         self.current.map(|p| (p, self.direction))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.width * self.height))
+    }
 }
 
 pub fn part_1<I: BufRead>(input: I) -> anyhow::Result<String> {
-    Steps::try_from(input).map(|s| s.map(|(p, _)| p).collect::<HashSet<_>>().len().to_string())
+    Steps::try_from(input).map(|s| {
+        s.map(|(p, _)| p)
+            .collect::<gxhash::HashSet<_>>()
+            .len()
+            .to_string()
+    })
 }
 
 pub fn part_2<I: BufRead>(input: I) -> anyhow::Result<String> {
     let mut steps = Steps::try_from(input)?;
-    let positions = steps.by_ref().map(|(p, _)| p).collect::<HashSet<_>>();
+    let positions = steps
+        .by_ref()
+        .map(|(p, _)| p)
+        .collect::<gxhash::HashSet<_>>();
 
-    let mut seen = HashSet::new();
-    let mut n = 0;
-    for p in &positions {
+    let mut seen = gxhash::HashSet::with_capacity(positions.len());
+
+    let num_loops = positions.iter().fold(0, |acc, p| {
         seen.clear();
         steps.reset_with_obstacle(*p);
-        for step in steps.by_ref() {
-            if seen.contains(&step) {
-                n += 1;
-                break;
-            }
-            seen.insert(step);
+        if steps.by_ref().any(|step| !seen.insert(step)) {
+            return acc + 1;
         }
-    }
-    Ok(n.to_string())
+        acc
+    });
+
+    Ok(num_loops.to_string())
 }
 
 pub fn solution<I: BufRead>() -> Day<I> {
