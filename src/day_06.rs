@@ -85,11 +85,11 @@ impl Iterator for Steps {
     }
 }
 
-fn part_1<I: BufRead>(input: I) -> anyhow::Result<String> {
+pub fn part_1<I: BufRead>(input: I) -> anyhow::Result<String> {
     Steps::try_from(input).map(|s| s.map(|(p, _)| p).collect::<HashSet<_>>().len().to_string())
 }
 
-fn part_2<I: BufRead>(input: I) -> anyhow::Result<String> {
+pub fn part_2<I: BufRead>(input: I) -> anyhow::Result<String> {
     let mut steps = Steps::try_from(input)?;
     let positions = steps.by_ref().map(|(p, _)| p).collect::<HashSet<_>>();
 

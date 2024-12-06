@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.93"
 clap = { version = "4.5.21", features = ["derive"] }
+criterion = "0.5.1"
+
+[[bench]]
+name="adventofcode-benchmark"
+harness = false

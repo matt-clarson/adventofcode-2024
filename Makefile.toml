@@ -7,6 +7,10 @@ args = ["fmt", "--", "--emit=files"]
 command = "cargo"
 args = ["clean"]
 
+[tasks.bench]
+command = "cargo"
+args = ["bench"]
+
 [tasks.check]
 install_crate = "clippy"
 command = "cargo"

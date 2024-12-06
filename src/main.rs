@@ -1,15 +1,4 @@
-mod day;
-mod day_01;
-mod day_02;
-mod day_03;
-mod day_04;
-mod day_05;
-mod day_06;
-mod grid;
-mod parser;
-#[cfg(test)]
-mod test_util;
-
+use adventofcode_2024::*;
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
