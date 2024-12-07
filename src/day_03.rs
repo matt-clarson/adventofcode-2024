@@ -8,7 +8,7 @@ use crate::{
 enum Instruction {
     Do,
     Dont,
-    Mul(i32, i32),
+    Mul(i64, i64),
 }
 
 struct Instructions<R: Read> {

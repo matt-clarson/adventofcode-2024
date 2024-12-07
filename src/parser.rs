@@ -71,7 +71,7 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     ///
     /// Consumes all whitespace characters (besides newlines `\n`).
     /// If the next character in the stream is neither a digit or '-', returns None.
-    pub fn next_integer(&mut self) -> Option<i32> {
+    pub fn next_integer(&mut self) -> Option<i64> {
         self.skip_if_eq(' ');
         self.integer()
     }
@@ -82,7 +82,7 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
     ///
     /// Note that the method [Parser::next_integer] exists as a wrapper for this method that also
     /// consumes leading whitespace before the next integer.
-    pub fn integer(&mut self) -> Option<i32> {
+    pub fn integer(&mut self) -> Option<i64> {
         let mut s = self
             .next_if(|c| c.is_ascii_digit() || c == '-')
             .map(|c| format!("{c}"))?;

@@ -12,9 +12,9 @@ use crate::{
 
 #[derive(Debug)]
 enum SafetyUpdate {
-    Ordering(i32, i32),
+    Ordering(i64, i64),
     Break,
-    Instructions(Vec<i32>),
+    Instructions(Vec<i64>),
 }
 
 struct SafetyUpdates<R: Read> {
@@ -114,7 +114,7 @@ impl<R: Read> Iterator for SafetyUpdates<R> {
 
 #[derive(Debug)]
 struct Ordering {
-    map: HashMap<i32, HashSet<i32>>,
+    map: HashMap<i64, HashSet<i64>>,
 }
 
 impl Ordering {
@@ -124,7 +124,7 @@ impl Ordering {
         }
     }
 
-    fn insert(&mut self, (left, right): (i32, i32)) {
+    fn insert(&mut self, (left, right): (i64, i64)) {
         if let Some(set) = self.map.get_mut(&left) {
             set.insert(right);
         } else {
@@ -132,7 +132,7 @@ impl Ordering {
         }
     }
 
-    fn compare(&self, left: i32, right: i32) -> std::cmp::Ordering {
+    fn compare(&self, left: i64, right: i64) -> std::cmp::Ordering {
         self.map
             .get(&left)
             .and_then(|set| {
@@ -154,13 +154,13 @@ impl Ordering {
             .unwrap_or(std::cmp::Ordering::Equal)
     }
 
-    fn is_sorted<V: AsRef<[i32]>>(&self, xs: V) -> bool {
+    fn is_sorted<V: AsRef<[i64]>>(&self, xs: V) -> bool {
         xs.as_ref()
             .windows(2)
             .all(|x| self.compare(x[0], x[1]).is_ge())
     }
 
-    fn get_middle_if_sorted(&self, xs: Vec<i32>) -> Option<i32> {
+    fn get_middle_if_sorted(&self, xs: Vec<i64>) -> Option<i64> {
         if !self.is_sorted(&xs) {
             return None;
         }
@@ -168,7 +168,7 @@ impl Ordering {
         Some(xs[xs.len() / 2])
     }
 
-    fn get_middle_if_not_sorted(&self, mut xs: Vec<i32>) -> Option<i32> {
+    fn get_middle_if_not_sorted(&self, mut xs: Vec<i64>) -> Option<i64> {
         if self.is_sorted(&xs) {
             return None;
         }

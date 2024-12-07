@@ -19,7 +19,7 @@ impl<R: Read> From<R> for Integers<R> {
 }
 
 impl<R: Read> Iterator for Integers<R> {
-    type Item = anyhow::Result<Vec<i32>>;
+    type Item = anyhow::Result<Vec<i64>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut integers = self.parser.next_integer().map(|n| vec![n])?;
@@ -49,7 +49,7 @@ enum LineState {
     Unsafe,
 }
 
-fn calculate_local_line_state(i0: i32, i1: i32) -> LineState {
+fn calculate_local_line_state(i0: i64, i1: i64) -> LineState {
     let d = i0 - i1;
     if (1..4).contains(&d) {
         LineState::Decrementing
@@ -61,7 +61,7 @@ fn calculate_local_line_state(i0: i32, i1: i32) -> LineState {
 }
 
 fn part_1<I: BufRead>(input: I) -> anyhow::Result<String> {
-    fn line_is_safe(ints: &[i32]) -> bool {
+    fn line_is_safe(ints: &[i64]) -> bool {
         let line_state = calculate_local_line_state(ints[0], ints[1]);
         if line_state == LineState::Unsafe {
             return false;
@@ -84,7 +84,7 @@ fn part_1<I: BufRead>(input: I) -> anyhow::Result<String> {
 }
 
 fn part_2<I: BufRead>(input: I) -> anyhow::Result<String> {
-    let line_is_safe = |ints: &[i32]| -> bool {
+    let line_is_safe = |ints: &[i64]| -> bool {
         let line_state = calculate_local_line_state(ints[0], ints[1]);
         if line_state == LineState::Unsafe {
             return false;

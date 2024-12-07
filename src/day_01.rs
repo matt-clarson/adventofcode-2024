@@ -24,7 +24,7 @@ impl<R: Read> From<R> for Pairs<R> {
 }
 
 impl<R: Read> Iterator for Pairs<R> {
-    type Item = anyhow::Result<(i32, i32)>;
+    type Item = anyhow::Result<(i64, i64)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let left = self.parser.next_integer()?;
