@@ -5,18 +5,50 @@ pub struct Vec2<I>(pub I, pub I);
 
 impl Vec2<usize> {
     pub fn try_add(&self, d: Vec2<isize>, max: Vec2<usize>) -> Option<Vec2<usize>> {
-        if self.0 == 0 && d.0 == -1
-            || self.0 == max.0 && d.0 == 1
-            || self.1 == 0 && d.1 == -1
-            || self.1 == max.1 && d.1 == 1
-        {
-            None
+        let x = if d.0.is_negative() {
+            self.0.checked_sub(d.0.wrapping_abs() as usize)
         } else {
-            Some(Vec2(
-                (self.0 as isize + d.0) as usize,
-                (self.1 as isize + d.1) as usize,
-            ))
+            self.0.checked_add(d.0 as usize)
+        }?;
+
+        let y = if d.1.is_negative() {
+            self.1.checked_sub(d.1.wrapping_abs() as usize)
+        } else {
+            self.1.checked_add(d.1 as usize)
+        }?;
+
+        if x > max.0 || y > max.1 {
+            return None;
         }
+
+        Some(Vec2(x, y))
+    }
+
+    pub fn try_subtract(&self, d: Vec2<isize>, max: Vec2<usize>) -> Option<Vec2<usize>> {
+        let x = if d.0.is_negative() {
+            self.0.checked_add(d.0.wrapping_abs() as usize)
+        } else {
+            self.0.checked_sub(d.0 as usize)
+        }?;
+
+        let y = if d.1.is_negative() {
+            self.1.checked_add(d.1.wrapping_abs() as usize)
+        } else {
+            self.1.checked_sub(d.1 as usize)
+        }?;
+
+        if x > max.0 || y > max.1 {
+            return None;
+        }
+
+        Some(Vec2(x, y))
+    }
+
+    pub fn subtract(&self, d: Vec2<usize>) -> Vec2<isize> {
+        Vec2(
+            (self.0 as isize) - (d.0 as isize),
+            (self.1 as isize) - (d.1 as isize),
+        )
     }
 }
 
