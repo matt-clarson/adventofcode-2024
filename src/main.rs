@@ -24,7 +24,8 @@ gen::days! {
     Day06: day_06::solution(),
     Day07: day_07::solution(),
     Day08: day_08::solution(),
-    Day09: day_09::solution()
+    Day09: day_09::solution(),
+    Day10: day_10::solution()
 }
 
 fn main() {

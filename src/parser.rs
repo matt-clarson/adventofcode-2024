@@ -221,6 +221,15 @@ impl<S: Iterator<Item = anyhow::Result<u8>>> Parser<S> {
         self.peeked.pop_back().or_else(|| self.take_next())
     }
 
+    /// Converts the parser into an iterator of `char` values. Any underlying IO errors from
+    /// reading the source stream are converted into panics.
+    pub fn chars(self) -> impl Iterator<Item = char> {
+        self.source.map(|b| match b {
+            Ok(b) => b.into(),
+            Err(err) => panic!("source stream produced an error: {}", err),
+        })
+    }
+
     fn take_next(&mut self) -> Option<char> {
         self.source.next().map(|b| match b {
             Ok(b) => b.into(),
